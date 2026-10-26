@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070c21">
+  <meta name="description" content="Three Cars para Android: toque na estrada de cada carro para alternar entre as duas posições. Colete todos os círculos e desvie dos blocos.">
+  <title>Three Cars — Multitarefa na estrada</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070c21'/%3E%3Cg fill='none' stroke-width='4'%3E%3Crect x='12' y='16' width='10' height='32' rx='5' stroke='%23ff4f6d'/%3E%3Crect x='27' y='16' width='10' height='32' rx='5' stroke='%232dd4f5'/%3E%3Crect x='42' y='16' width='10' height='32' rx='5' stroke='%23ffbf4d'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient" aria-hidden="true">
+    <div class="ambient__grid"></div>
+    <div class="ambient__glow ambient__glow--red"></div>
+    <div class="ambient__glow ambient__glow--cyan"></div>
+    <div class="ambient__glow ambient__glow--amber"></div>
+  </div>
+
+  <main class="layout">
+    <section class="game-column" aria-label="Área do jogo">
+      <div class="game-shell" id="gameShell">
+        <canvas id="gameCanvas" width="540" height="1080" tabindex="0" aria-label="Pista do Three Cars. Toque na estrada de um carro para alternar entre as duas posições. Colete círculos e evite os blocos."></canvas>
+
+        <div class="hud" id="hud" aria-hidden="true">
+          <div class="hud__bar">
+            <div class="hud__score">
+              <span class="hud__label">PONTOS</span>
+              <strong id="scoreValue">0</strong>
+            </div>
+
+            <div class="hud__speed">
+              <div class="hud__speed-top">
+                <span class="hud__label">VELOCIDADE</span>
+                <strong><span id="speedValue">1.0</span><small>×</small></strong>
+              </div>
+              <div class="speed-track" aria-hidden="true"><i id="speedFill"></i></div>
+            </div>
+
+            <div class="hud__end">
+              <div class="hud__best">
+                <span class="hud__label" id="hudBestLabel">RECORDE</span>
+                <strong id="hudBest">0</strong>
+              </div>
+              <button class="icon-button icon-button--small" id="pauseButton" type="button" aria-label="Pausar jogo">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="level-flash" id="levelFlash" aria-live="polite"></div>
+        </div>
+
+        <div class="countdown" id="countdown" hidden aria-live="assertive">
+          <span class="countdown__hint">PREPARE OS DEDOS</span>
+          <strong id="countdownValue">3</strong>
+        </div>
+
+        <section class="screen screen--start" id="startScreen">
+          <div class="screen__shade"></div>
+          <div class="start-screen">
+            <div class="start-utility">
+              <button class="sound-button" id="startSoundButton" type="button" data-sound-toggle aria-label="Desativar som">
+                <svg class="icon-sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3l4.2-3.7v12.4L7 14.5H4z"/><path d="M15 9a4.2 4.2 0 0 1 0 6M17.8 6.5a7.7 7.7 0 0 1 0 11"/></svg>
+                <svg class="icon-sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3l4.2-3.7v12.4L7 14.5H4z"/><path d="m15.5 9.5 5 5m0-5-5 5"/></svg>
+                <span data-sound-label>SOM LIGADO</span>
+              </button>
+              <button class="info-button" id="aboutButton" type="button" aria-label="Sobre o jogo" aria-haspopup="dialog">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="8.2"/>
+                  <path d="M12 10.8v5.1"/>
+                  <circle cx="12" cy="7.8" r="0.95" fill="currentColor" stroke="none"/>
+                </svg>
+              </button>
+            </div>
+            <div class="start-content">
+              <div class="start-screen__top">
+                <h1 class="game-title"><span class="game-title__count" id="gameTitleCount">THREE</span><span class="game-title__cars">CARS</span></h1>
+              <p class="game-subtitle" id="startSubtitle">Três carros. Três estradas.</p>
+              <div class="start-record">
+                <span id="menuBestLabel">RECORDE</span>
+                <strong id="menuBest">0</strong>
+              </div>
+              <div class="start-mode-row">
+                <div class="start-mode" role="group" aria-label="Quantidade de carros">
+                  <span class="start-mode__label">MODO</span>
+                  <button class="mode-button" type="button" data-car-count="2" aria-pressed="false">2 CARROS</button>
+                  <button class="mode-button is-active" type="button" data-car-count="3" aria-pressed="true">3 CARROS</button>
+                </div>
+                <button class="speed-button" id="speedSettingsButton" type="button" aria-label="Configurações de velocidade" aria-haspopup="dialog">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor" stroke="none" fill-rule="evenodd" d="M19.14 12.94a7.04 7.04 0 0 0 .06-.94c0-.32-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.08 7.08 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.61.22L2.65 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.62-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.12.22.37.29.61.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.24.07.49 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2Z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="start-rules" aria-label="Regras">
+              <div class="start-rule">
+                <span class="start-rule__glyph start-rule__glyph--ring" aria-hidden="true"></span>
+                <div><strong>Círculo</strong><small>+1 ponto</small></div>
+              </div>
+              <div class="start-rule">
+                <span class="start-rule__glyph start-rule__glyph--square" aria-hidden="true"></span>
+                <div><strong>Bloco</strong><small>fim de jogo</small></div>
+              </div>
+              <div class="start-rule">
+                <span class="start-rule__glyph start-rule__glyph--miss" aria-hidden="true">×</span>
+                <div><strong>Círculo perdido</strong><small>fim de jogo</small></div>
+              </div>
+            </div>
+
+            <div class="start-screen__bottom">
+              <div class="start-actions">
+                <button class="button button--primary" id="playButton" type="button">
+                  <span class="button__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M8.2 5.2 19 12 8.2 18.8Z"/></svg>
+                  </span>
+                  <span>JOGAR</span>
+                </button>
+              </div>
+
+              <div class="touch-guide" aria-label="Controle por toque">
+                <span class="touch-guide__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+                </span>
+                <div>
+                  <strong>TOQUE NA ESTRADA</strong>
+                  <small>Toque na via de um carro para alterná-lo de lado.</small>
+                </div>
+              </div>
+            </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen screen--modal" id="pauseScreen" hidden aria-labelledby="pauseTitle">
+          <div class="modal-card">
+            <div class="modal-card__head">
+              <div>
+                <p class="eyebrow"><span class="eyebrow__dot"></span> INTERVALO TÉCNICO</p>
+                <h2 id="pauseTitle">Pausa</h2>
+              </div>
+              <span class="round-icon round-icon--pause" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><rect x="6.5" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2"/></svg>
+              </span>
+            </div>
+
+            <div class="pause-stats">
+              <div><span>PONTOS</span><strong id="pauseScore">0</strong></div>
+              <div><span>VELOCIDADE</span><strong><span id="pauseSpeed">1.0</span>×</strong></div>
+              <div><span id="pauseBestLabel">RECORDE</span><strong id="pauseBest">0</strong></div>
+            </div>
+
+            <p class="pause-rule"><span aria-hidden="true">!</span> Um círculo perdido também encerra a corrida.</p>
+
+            <div class="modal-actions modal-actions--stack">
+              <button class="button button--primary" id="resumeButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 5.2 19 12 8.2 18.8Z"/></svg>
+                CONTINUAR
+              </button>
+              <div class="button-row">
+                <button class="button button--ghost" id="pauseSoundButton" type="button" data-sound-toggle aria-label="Desativar som">
+                  <svg class="icon-sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3l4.2-3.7v12.4L7 14.5H4z"/><path d="M15 9a4.2 4.2 0 0 1 0 6M17.8 6.5a7.7 7.7 0 0 1 0 11"/></svg>
+                  <svg class="icon-sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3l4.2-3.7v12.4L7 14.5H4z"/><path d="m15.5 9.5 5 5m0-5-5 5"/></svg>
+                  <span data-sound-label>SOM</span>
+                </button>
+              </div>
+              <div class="pause-links">
+                <button class="text-button" id="restartButton" type="button">REINICIAR CORRIDA</button>
+                <span aria-hidden="true">·</span>
+                <button class="text-button" id="pauseMenuButton" type="button">SAIR PARA O INÍCIO</button>
+              </div>
+            </div>
+            <p class="pause-tip">Toque na estrada para alternar. Colete todos os círculos.</p>
+          </div>
+        </section>
+
+        <section class="screen screen--modal screen--gameover" id="gameOverScreen" hidden aria-labelledby="gameOverTitle">
+          <div class="modal-card modal-card--gameover">
+            <p class="eyebrow eyebrow--danger"><span class="eyebrow__dot"></span> FIM DE JOGO</p>
+            <h2 id="gameOverTitle">BATIDA<span>.</span></h2>
+            <p class="modal-card__lead" id="gameOverReason">Um bloco entrou na rota da frota.</p>
+
+            <div class="result-board">
+              <div class="result-board__main">
+                <span>PONTOS</span>
+                <strong id="finalScore">0</strong>
+              </div>
+              <div class="result-board__side">
+                <span id="finalBestLabel">RECORDE</span>
+                <strong id="finalBest">0</strong>
+                <em id="newRecordBadge" hidden>NOVO RECORDE</em>
+              </div>
+            </div>
+
+            <div class="gameover-meta">
+              <span>VELOCIDADE FINAL <strong><span id="finalSpeed">1.0</span>×</strong></span>
+              <span id="finalCars">3 CARROS NA PISTA</span>
+            </div>
+
+            <div class="modal-actions modal-actions--stack">
+              <button class="button button--primary" id="playAgainButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 5.2 19 12 8.2 18.8Z"/></svg>
+                JOGAR DE NOVO
+              </button>
+              <div class="button-row">
+                <button class="button button--ghost" id="gameOverMenuButton" type="button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 11 8-7 8 7v8a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg>
+                  INÍCIO
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen screen--modal screen--about" id="aboutScreen" hidden role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+          <div class="modal-card about-card">
+            <div class="about-head">
+              <h2 id="aboutTitle">Informações</h2>
+              <button class="icon-button about-close" id="aboutCloseButton" type="button" aria-label="Fechar informações">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+              </button>
+            </div>
+
+            <dl class="about-list">
+              <div class="about-row">
+                <dt>Criado por</dt>
+                <dd>Willian James</dd>
+              </div>
+              <div class="about-row">
+                <dt>Plataforma</dt>
+                <dd>Android</dd>
+              </div>
+              <div class="about-row">
+                <dt>Formato</dt>
+                <dd>Offline</dd>
+              </div>
+              <div class="about-row">
+                <dt>Versão</dt>
+                <dd>1.2.1</dd>
+              </div>
+            </dl>
+
+            <div class="about-actions">
+              <button class="button button--ghost" id="aboutDoneButton" type="button">FECHAR</button>
+            </div>
+
+            <p class="about-source">O código fonte deste projeto pode ser acessado via GitHub em: https://github.com/WillianJames/Three-Cars</p>
+          </div>
+        </section>
+
+        <section class="screen screen--modal screen--speed" id="speedScreen" hidden role="dialog" aria-modal="true" aria-labelledby="speedTitle">
+          <div class="modal-card speed-card">
+            <div class="speed-head">
+              <h2 id="speedTitle">Velocidade</h2>
+              <button class="icon-button speed-close" id="speedCloseButton" type="button" aria-label="Fechar configurações de velocidade">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+              </button>
+            </div>
+
+            <p class="speed-lead">Escolha como a velocidade evolui. As alterações valem para a próxima corrida.</p>
+
+            <div class="speed-mode" role="radiogroup" aria-label="Modo de velocidade">
+              <button class="speed-mode__option" type="button" data-speed-mode="fixed" role="radio" aria-checked="false">
+                <strong>Fixa</strong>
+                <small>Mantém a velocidade escolhida durante a corrida.</small>
+              </button>
+              <button class="speed-mode__option" type="button" data-speed-mode="progressive" role="radio" aria-checked="false">
+                <strong>Progressiva</strong>
+                <small>A velocidade sobe com o tempo e a pontuação.</small>
+              </button>
+            </div>
+
+            <div class="speed-control" id="fixedSpeedControl" hidden>
+              <div class="speed-control__label">
+                <label for="fixedSpeedRange">Velocidade fixa</label>
+                <output id="fixedSpeedValue" for="fixedSpeedRange">1.5×</output>
+              </div>
+              <input class="speed-range" id="fixedSpeedRange" type="range" min="1" max="4" step="0.1" value="1.5">
+              <div class="speed-scale"><span>1.0×</span><span>4.0×</span></div>
+            </div>
+
+            <div class="speed-control" id="progressiveSpeedControl" hidden>
+              <div class="speed-control__label">
+                <label for="maxSpeedRange">Velocidade máxima</label>
+                <output id="maxSpeedValue" for="maxSpeedRange">Sem limite</output>
+              </div>
+              <div class="speed-slider" id="maxSpeedSlider">
+                <input class="speed-range" id="maxSpeedRange" type="range" min="1.5" max="4" step="0.1" value="2.5">
+                <div class="speed-scale"><span>1.5×</span><span>4.0×</span></div>
+              </div>
+              <label class="speed-unlimited" for="unlimitedSpeed">
+                <input type="checkbox" id="unlimitedSpeed">
+                <span class="speed-unlimited__box" aria-hidden="true"></span>
+                <span>Sem limite máximo</span>
+              </label>
+            </div>
+
+            <p class="speed-status" id="speedStatus" aria-live="polite"></p>
+
+            <div class="speed-actions">
+              <button class="button button--primary" id="speedDoneButton" type="button">FECHAR</button>
+              <button class="text-button" id="speedDefaultButton" type="button">RETORNAR AO PADRÃO</button>
+            </div>
+
+            <p class="speed-note">Novos recordes só são contabilizados no modo padrão: velocidade progressiva e sem limite máximo.</p>
+          </div>
+        </section>
+
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <noscript>
+    <p class="noscript">Este jogo precisa de JavaScript ativado para rodar.</p>
+  </noscript>
+
+  <script src="game.js" defer></script>
+</body>
+</html>
